@@ -16,6 +16,12 @@ jobs:
         # - false: automatically configure X11
         # - true: disable building with X11 (use --without-x option)
         without-x: [false,true]
+        # used for macos runner
+        homebrew-prefix: [ '/usr/local' ]
+        include:
+          - os: macos-latest
+            without-x: false
+            homebrew-prefix: '/Users/runner/homebrew'
     steps:
       - uses: actions/checkout@v2
       - name: Pre-reqs (apt)
@@ -23,6 +29,17 @@ jobs:
         run: |
           sudo apt-get -y update && sudo apt-get install build-essential \
             libpng-dev zlib1g-dev libx11-dev libxaw7-dev libxt-dev x11proto-core-dev libgif-dev
+      - name: Prepare Homebrew
+        if: runner.os == 'macOS'
+        run: |
+          echo "Using Homebrew prefix: ${{ matrix.homebrew-prefix }}"
+          if [ "${{ matrix.homebrew-prefix }}" = "/usr/local" ]; then
+            echo "LIBRARY_PATH=$(brew --prefix)/lib${LIBRARY_PATH:+:${LIBRARY_PATH}}" >> $GITHUB_ENV
+          else
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"
+            git clone https://github.com/Homebrew/brew.git "${{ matrix.homebrew-prefix }}"
+            echo "${{ matrix.homebrew-prefix }}/bin" >> $GITHUB_PATH
+          fi
       - name: Pre-reqs (homebrew)
         if: runner.os == 'macOS'
         run: |
@@ -30,7 +47,6 @@ jobs:
           brew install automake \
             libpng \
             libxt
-          echo "LIBRARY_PATH=$(brew --prefix)/lib${LIBRARY_PATH:+:${LIBRARY_PATH}}" >> $GITHUB_ENV
       - name: Bootstrap
         run: |
           sh ./bootstrap
